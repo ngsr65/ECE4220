@@ -54,6 +54,11 @@ int main(){
 		*(Song + i) = malloc(50 * sizeof(char));
 	}
 
+	//Allocate space for the thread arguments
+	args1 = malloc(sizeof(threadargs));
+	args2 = malloc(sizeof(threadargs));
+	args3 = malloc(sizeof(threadargs));
+
 	//Open the files
 	pFile1 = fopen("first.txt", "r");
 	pFile2 = fopen("second.txt", "r");
@@ -101,13 +106,16 @@ int main(){
 		free(*(Song + i));
 	}
 	free(Song);
+	free(args1);
+	free(args2);
+	free(args3);
 
 	return 0;
 }
 
 
 void* songfixer(void *args){
-	int timer = timerfd_create(CLOCK_MONOTONIC, 0);
+	int i, j, timer = timerfd_create(CLOCK_MONOTONIC, 0);
 	struct itimerspec timer_value;
 	struct sched_param param;	
 	uint64_t periods = 0;	
@@ -127,11 +135,14 @@ void* songfixer(void *args){
 	//Set the schedular to First in First out
 	sched_setscheduler(0, SCHED_FIFO, &param);
 
-
-	
+	for (i = 0; i < 8; i++){
 		//Read the period variable
 		read(timer, &periods, sizeof(periods));
-
+		while (fscanf(((threadargs*)args)->file, "%c", (((threadargs*)args)->buffer + j)) != '\n'){
+			j++;
+		}
+		*(((threadargs*)args)->buffer + j) = '\n';
+	}
 
 	pthread_exit(0);
 	
