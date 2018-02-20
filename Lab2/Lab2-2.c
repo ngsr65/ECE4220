@@ -10,25 +10,24 @@
 
 #define Priority 51
 
-#define THREAD1INITIALSECONDS 0
-#define THREAD1INITIALNANOSECONDS 50000
+#define THREAD1INITIALSECONDS 1
+#define THREAD1INITIALNANOSECONDS 100000
 #define THREAD1PERIODSECONDS 0
-#define THREAD1PERIODNANOSECONDS 50000
+#define THREAD1PERIODNANOSECONDS 200000
 
-#define THREAD2INITIALSECONDS 0
-#define THREAD2INITIALNANOSECONDS 100000
+#define THREAD2INITIALSECONDS 1
+#define THREAD2INITIALNANOSECONDS 200000
 #define THREAD2PERIODSECONDS 0
-#define THREAD2PERIODNANOSECONDS 50000
+#define THREAD2PERIODNANOSECONDS 200000
 
-#define THREAD3INITIALSECONDS 0
-#define THREAD3INITIALNANOSECONDS 75000
+#define THREAD3INITIALSECONDS 1
+#define THREAD3INITIALNANOSECONDS 150000
 #define THREAD3PERIODSECONDS 0
-#define THREAD3PERIODNANOSECONDS 25000
+#define THREAD3PERIODNANOSECONDS 50000
 
 //Structures
 struct Threadargs{
-	FILE *file;
-	char *buffer;
+	char *buffer, *filename;
 	char **song;
 	time_t is, ps;
 	long in, pn;
@@ -40,8 +39,7 @@ void* songmixer(void *args);
 
 int main(){
 	
-	FILE *pFile1, *pFile2;
-	char tempbuffer[50] = {'\0'};
+	char *tempbuffer;
 	char **Song;
 	int i;
 	struct itimerspec timerval;
@@ -53,19 +51,40 @@ int main(){
 	for (i = 0; i < 20; i++){
 		*(Song + i) = malloc(50 * sizeof(char));
 	}
+	tempbuffer = malloc(50 * sizeof(char));
 
 	//Allocate space for the thread arguments
 	args1 = malloc(sizeof(threadargs));
+	args1->filename = malloc(sizeof(char) * 20);
 	args2 = malloc(sizeof(threadargs));
+	args2->filename = malloc(sizeof(char) * 20);
 	args3 = malloc(sizeof(threadargs));
-
-	//Open the files
-	pFile1 = fopen("first.txt", "r");
-	pFile2 = fopen("second.txt", "r");
 	
 	//Set the thread arguments
-	args1->file = pFile1;
-	args2->file = pFile2;
+	*(args1->filename) = 'f';
+	*(args1->filename + 1) = 'i';
+	*(args1->filename + 2) = 'r';
+	*(args1->filename + 3) = 's';
+	*(args1->filename + 4) = 't';
+	*(args1->filename + 5) = '.';
+	*(args1->filename + 6) = 't';
+        *(args1->filename + 7) = 'x';
+        *(args1->filename + 8) = 't';
+        *(args1->filename + 9) = '\0';
+
+        *(args2->filename) = 's';
+        *(args2->filename + 1) = 'e';
+        *(args2->filename + 2) = 'c';
+        *(args2->filename + 3) = 'o';
+        *(args2->filename + 4) = 'n';
+        *(args2->filename + 5) = 'd';
+	*(args2->filename + 6) = '.';
+        *(args2->filename + 7) = 't';
+        *(args2->filename + 8) = 'x';
+        *(args2->filename + 9) = 't';
+        *(args2->filename + 10) = '\0';
+
+
 	args1->is = THREAD1INITIALSECONDS;
 	args2->is = THREAD2INITIALSECONDS;
 	args3->is = THREAD3INITIALSECONDS;
@@ -80,6 +99,7 @@ int main(){
 	args3->pn = THREAD3PERIODNANOSECONDS;
 	args1->buffer = tempbuffer;
 	args2->buffer = tempbuffer;
+	args3->buffer = tempbuffer;
 	args3->song = Song; 
 	
 	//Create the threads
@@ -94,31 +114,33 @@ int main(){
 	
 	//Print out the song
 	for (i = 0; i < 20; i++){
-		printf("%s\n", *(Song+i));
+		printf("Line %d: %s", i + 1, *(Song+i));
 	}	
-
-	//Close the files
-	fclose(pFile1);
-	fclose(pFile2);
 
 	//Free the allocated memory
 	for (i = 0; i < 20; i++){
 		free(*(Song + i));
 	}
 	free(Song);
+	free(args1->filename);
 	free(args1);
+	free(args2->filename);
 	free(args2);
 	free(args3);
+	free(tempbuffer);
 
 	return 0;
 }
 
 
 void* songfixer(void *args){
-	int i, j, timer = timerfd_create(CLOCK_MONOTONIC, 0);
+	int i, j = 0, timer = timerfd_create(CLOCK_MONOTONIC, 0);
 	struct itimerspec timer_value;
 	struct sched_param param;	
 	uint64_t periods = 0;	
+	char temp;
+	FILE* pFile;
+	pFile = fopen(((threadargs*)args)->filename, "r");
 
 	//Set the timer period and intervals
 	timer_value.it_interval.tv_sec = ((threadargs*)args)->ps;
@@ -138,12 +160,20 @@ void* songfixer(void *args){
 	for (i = 0; i < 8; i++){
 		//Read the period variable
 		read(timer, &periods, sizeof(periods));
-		while (fscanf(((threadargs*)args)->file, "%c", (((threadargs*)args)->buffer + j)) != '\n'){
+
+		fscanf(pFile, "%c", &temp);
+
+		*(((threadargs*)args)->buffer + j) = temp;
+		while (temp != '\n'){
 			j++;
+			fscanf(pFile, "%c", (((threadargs*)args)->buffer + j));
+                	temp = *(((threadargs*)args)->buffer + j);
 		}
-		*(((threadargs*)args)->buffer + j) = '\n';
+		j = 0;
+	printf("Fixer run %d finished\n", i+1);
 	}
 
+	fclose(pFile);
 	pthread_exit(0);
 	
 }
@@ -175,10 +205,12 @@ void* songmixer(void *args){
  	        //Read the period variable
       		read(timer, &periods, sizeof(periods));
 
-		for (j = 0; j < 50; j++){
+		for (j = 0; *(((threadargs*)args)->buffer + j) != '\n'; j++){
 			*(*(((threadargs*)args)->song + i) + j) = *(((threadargs*)args)->buffer + j);
 		}
+		*(*(((threadargs*)args)->song + i) + j) = '\n';
 
+	printf("Mixer run %d finished\n", i+1);
 	}
 	
 	pthread_exit(0);
