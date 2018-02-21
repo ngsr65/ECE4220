@@ -8,22 +8,22 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define Priority 51
+#define Priority 55
 
-#define THREAD1INITIALSECONDS 1
-#define THREAD1INITIALNANOSECONDS 100000
+#define THREAD1INITIALSECONDS 0
+#define THREAD1INITIALNANOSECONDS 300000
 #define THREAD1PERIODSECONDS 0
-#define THREAD1PERIODNANOSECONDS 200000
+#define THREAD1PERIODNANOSECONDS 600000
 
-#define THREAD2INITIALSECONDS 1
-#define THREAD2INITIALNANOSECONDS 200000
+#define THREAD2INITIALSECONDS 0
+#define THREAD2INITIALNANOSECONDS 360000
 #define THREAD2PERIODSECONDS 0
-#define THREAD2PERIODNANOSECONDS 200000
+#define THREAD2PERIODNANOSECONDS 600000
 
-#define THREAD3INITIALSECONDS 1
-#define THREAD3INITIALNANOSECONDS 150000
+#define THREAD3INITIALSECONDS 0
+#define THREAD3INITIALNANOSECONDS 350000
 #define THREAD3PERIODSECONDS 0
-#define THREAD3PERIODNANOSECONDS 50000
+#define THREAD3PERIODNANOSECONDS 300000
 
 //Structures
 struct Threadargs{
@@ -42,13 +42,12 @@ int main(){
 	char *tempbuffer;
 	char **Song;
 	int i;
-	struct itimerspec timerval;
 	threadargs *args1, *args2, *args3;
 	pthread_t thread1, thread2, thread3;
 
 	//Allocate space for the song
-	Song = malloc(20 * sizeof(char*));
-	for (i = 0; i < 20; i++){
+	Song = malloc(16 * sizeof(char*));
+	for (i = 0; i < 16; i++){
 		*(Song + i) = malloc(50 * sizeof(char));
 	}
 	tempbuffer = malloc(50 * sizeof(char));
@@ -113,12 +112,12 @@ int main(){
 	pthread_join(thread3, NULL);		
 	
 	//Print out the song
-	for (i = 0; i < 20; i++){
-		printf("Line %d: %s", i + 1, *(Song+i));
+	for (i = 0; i < 16; i++){
+		printf("%s", *(Song+i));
 	}	
 
 	//Free the allocated memory
-	for (i = 0; i < 20; i++){
+	for (i = 0; i < 16; i++){
 		free(*(Song + i));
 	}
 	free(Song);
@@ -161,18 +160,26 @@ void* songfixer(void *args){
 		//Read the period variable
 		read(timer, &periods, sizeof(periods));
 
+		//Check for a missed period
+		if (periods > 1){
+			printf("Fixer missed a period!\n");
+		}
+
+		//Scan in the first character from the current line
 		fscanf(pFile, "%c", &temp);
 
+		//Put a line from the text into the buffer
 		*(((threadargs*)args)->buffer + j) = temp;
-		while (temp != '\n'){
+		while (temp != '\n' && temp != '\0'){
 			j++;
 			fscanf(pFile, "%c", (((threadargs*)args)->buffer + j));
                 	temp = *(((threadargs*)args)->buffer + j);
 		}
 		j = 0;
-	printf("Fixer run %d finished\n", i+1);
+	printf("Fixer %d \n", i+1);
 	}
 
+	//Close the file and exit
 	fclose(pFile);
 	pthread_exit(0);
 	
@@ -180,7 +187,6 @@ void* songfixer(void *args){
 
 void* songmixer(void *args){
 	int i, j, timer = timerfd_create(CLOCK_MONOTONIC, 0);
-	char temp;
         struct itimerspec timer_value;
         struct sched_param param;
         uint64_t periods = 0;
@@ -201,18 +207,25 @@ void* songmixer(void *args){
         sched_setscheduler(0, SCHED_FIFO, &param);
 
 
-	for (i = 0; i < 20; i++){
+	for (i = 0; i < 16; i++){
  	        //Read the period variable
       		read(timer, &periods, sizeof(periods));
 
-		for (j = 0; *(((threadargs*)args)->buffer + j) != '\n'; j++){
+		//Check for a missed period
+		if (periods > 1){
+			printf("Mixer missed a period!\n");
+		}
+	
+		//Put whatever is in the buffer into the song array
+		for (j = 0; *(((threadargs*)args)->buffer + j) != '\n' && *(((threadargs*)args)->buffer + j) != '\0' && j <= 48; j++){
 			*(*(((threadargs*)args)->song + i) + j) = *(((threadargs*)args)->buffer + j);
 		}
 		*(*(((threadargs*)args)->song + i) + j) = '\n';
 
-	printf("Mixer run %d finished\n", i+1);
+	printf("Mixer\n");
 	}
 	
+	//Exit the thread
 	pthread_exit(0);
 }
 
