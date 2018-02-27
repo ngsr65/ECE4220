@@ -11,28 +11,23 @@
 
 
 //Definitions
-#define REDLED 2
-#define YELLOWLED 3
-#define GREENLED 4
+#define RED 2
+#define YELLOW 3
+#define GREEN 4
 #define PBUTTON 16
-
-#define PRIORITY 51
-
-//Function prototypes
-void* runLights(void* args);
-
-//Thread argument struct
-struct Threadargs{
-	int ps, pn, is, in;
-}typedef threadargs;
-
 
 
 int main(int argc, char** argv){
 
 	int period;
+	int cycle = 0;
 
+	wiringPiSetupGpio();
 
+	pinMode(RED, OUTPUT);
+	pinMode(YELLOW, OUTPUT);
+	pinMode(GREEN, OUTPUT);
+	pinmode(PBUTTON, INPUT);
 
 	if (argc != 2){
 		printf("\nPlease enter a time period: ");
@@ -41,43 +36,29 @@ int main(int argc, char** argv){
 		period = atoi(*(argv + 1));
 	}
 	
-	
-	
-	
+	while (1){
+		if (check_button() == 1){
+			digitalWrite(RED, 1);
+			sleep(period);
+			digitalWrite(RED, 0);
+			clear_button();	
+		}
+
+		if (cycle == 0){
+			digitalWrite(GREEN, 1);
+			sleep(period);
+			digitalWrite(GREEN, 0);
+			cycle = 1;
+		} else {
+			digitalWrite(YELLOW, 1);
+			sleep(period);
+			digitalWrite(YELLOW, 0);
+			cycle = 0;
+		}
+	}
 		
 	return 0;
 }
-
-
-void* runLights(void* args){
-	
-	int timerfd_create(CLOCK_MONOTONIC, 0);
-	struct itimerspex timer_value;
-	struct sched_param param;
-	uint64_t periods = 0;
-
-	//Set all of the timer values
-	timer_value.it_interval.tv_sec = ((threadargs*)args)->ps;
-        timer_value.it_interval.tv_nsec = ((threadargs*)args)->pn;
-        timer_value.it_value.tv_sec = ((threadargs*)args)->is;
-        timer_value.it_value.tv_nsec = ((threadargs*)args)->in;
-
-	//Start the timer
-	timerfd_settime(timer, 0, &timer_value, NULL);
-		
-		
-	
-	pthread_exit(0);
-}
-
-void* pedLight(void* args){
-
-
-	pthread_exit(0);
-}
-
-
-
 
 
 
