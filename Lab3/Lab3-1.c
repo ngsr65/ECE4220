@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
-#include <ece4220lab3.h>
+#include "ece4220lab3.h"
 #include <wiringPi.h>
 #include <sched.h>
 #include <stdint.h>
@@ -27,7 +27,7 @@ int main(int argc, char** argv){
 	pinMode(RED, OUTPUT);
 	pinMode(YELLOW, OUTPUT);
 	pinMode(GREEN, OUTPUT);
-	pinmode(PBUTTON, INPUT);
+	pinMode(PBUTTON, INPUT);
 
 	if (argc != 2){
 		printf("\nPlease enter a time period: ");
