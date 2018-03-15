@@ -13,6 +13,13 @@
 //Definitions
 #define PBUTTON 16
 
+//Structures
+struct Threadargs{
+	int *pbuffer;
+	time_t *t;
+}typedef threadargs;
+
+
 //Function prototypes
 
 
@@ -23,40 +30,68 @@ sem_t my_semaphore;
 int main(int argc, char** argv){
 	
 	//Variables
-	int dummy, data[8], i = 0;
-	int N_pipe1, N_pipe2;	
-	
-	dummy = system("mkfifo N_pipe1");
-	dummy = system("mkfifo N_pipe2");
-	
-	if ((N_pipe1 = open("N_pipe1", O_RDONLY)) < 0){
-		printf("Error creating N_pipe1! Exiting program\n");
-		exit(-1);
-	}
+	int dummy, buffer;
+	int N_pipe1, N_pipe2;
+	time_t ctime;	
+	threadargs *args1;
 
-	if ((N_pipe2 = open("N_pipe2", O_RDONLY)) < 0){
-                printf("Error creating N_pipe2! Exiting program\n");
+	//Set thread arguments
+	args1->pbuffer = &buffer;
+	args1->t = &ctime;	
+
+	if ((N_pipe1 = open("/tmp/N_pipe1", O_RDONLY)) < 0){
+                printf("Error creating N_pipe1! Exiting program\n");
                 exit(-1);
         }
-
+	
 	
 	//Setup the hardware
 	wiringPiSetupGpio();
 	pinMode(PBUTTON, INPUT);
 	
 	
-
+	
 	//Recieve data
 	while(1){
-		if (read(N_pipe1, data + i, sizeof(int)) < 0){
+		if (read(N_pipe1, &buffer, sizeof(int)) < 0){
 			printf("N_pipe1 read data error!\n");
 			exit(-1);
+		} else {
+			printf("%d\n", buffer);
 		}
+		 
 	}
 	
 	
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
