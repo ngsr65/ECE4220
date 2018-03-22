@@ -77,8 +77,8 @@ int main(int argc, char** argv){
 			printf("N_pipe1 read data error!\n");
 			exit(-1);
 		} else {
-			df = 1;
 			clock_gettime(CLOCK_MONOTONIC, &time);
+			df = 1;
 		}
 		 
 	}
@@ -195,23 +195,20 @@ void* childthreadfunction(void* args){
 	}
 
 	//Figure out linear equation
-	tempi = olddata - newdata;
+	tempi = newdata - olddata;
 	new = ((uint64_t)newGPStime.tv_sec) * 1000000000 + (uint64_t)newGPStime.tv_nsec;
 	old = ((uint64_t)oldGPStime.tv_sec) * 1000000000 + (uint64_t)oldGPStime.tv_nsec;
-	printf("New Sec -> %d, New NSec -> %ld, New Sec * 1b - %ld\n", newGPStime.tv_sec, newGPStime.tv_nsec, ((long)(newGPStime.tv_sec)) * 1000000000);
-	printf("Old Sec -> %d, Old NSec -> %ld\n", oldGPStime.tv_sec, oldGPStime.tv_nsec);
-	printf("New - %ld Old - %ld\n", new, old);
 	
 
 
-	on = (long)(on - new);
+	on = (long)(new - old);
 	slope = (double)tempi/(double)on;
 
 	new = ((uint64_t)oldGPStime.tv_sec) * 1000000000 + (uint64_t)oldGPStime.tv_nsec;
-	intercept = (double)olddata - (slope * new);
+	intercept = (double)olddata - (double)(slope * (double)new);
 	new = ((uint64_t)buttontime.tv_sec) * 1000000000 + (uint64_t)buttontime.tv_nsec;
 
-	interpolateddata = (slope * new) + intercept;
+	interpolateddata = (double)(slope * (double)new) + intercept;
 
 	printf("Prev = %d, Next = %d, Data = %lf\n", olddata, newdata, interpolateddata);
 
