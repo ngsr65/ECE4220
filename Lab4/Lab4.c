@@ -33,9 +33,6 @@ void Process2main();
 void* thread0function(void* args);
 void* childthreadfunction(void* args);
 
-//Global variables
-sem_t my_semaphore;
-
 
 int main(int argc, char** argv){
 	
@@ -117,6 +114,7 @@ void Process2main(){
 	timerfd_settime(timer, 0, &timer_value, NULL);
 	read(timer, &periods, sizeof(periods));	
 
+	//Save timestamp if button is pressed
 	while (1){
 		if (check_button() == 1){
 			clock_gettime(CLOCK_MONOTONIC, &currenttime);
@@ -136,7 +134,7 @@ void* thread0function(void* args){
 	struct timespec oldtime;	
 	pthread_t childthread;
 	threadargs2 childargs;
-	
+
 	df = ((threadargs*)args)->newDataFlag;
 	data = ((threadargs*)args)->pbuffer;
 
@@ -156,12 +154,16 @@ void* thread0function(void* args){
 			printf("N_pipe2 read error!\n");
 		} else if (readamount > 0){
 			*df = 0;
+
+			//Set the new child thread's arguments
 			childargs.oldGPSdata = *data;
 			childargs.oldGPStime = *(((threadargs*)args)->gpstime);
 			childargs.buttontime = oldtime;
 			childargs.timeptr = (((threadargs*)args)->gpstime);
 			childargs.data = data;
 			childargs.dataflag = df;
+
+			//Create a new thread for the event
 			printf("\nButton Pressed! Creating thread...\n");
 			if (pthread_create(&childthread, NULL, childthreadfunction, (void*)&childargs) != 0){
 				printf("Error creating child thread!\n");
@@ -186,6 +188,7 @@ void* childthreadfunction(void* args){
 	newdata = *d;
 	newGPStime = *(((threadargs2*)args)->timeptr);
 
+	//Make sure the data and time is different, otherwise notify the user that the interpolation will be wrong
 	if (newdata == olddata){
 		printf("Data error!\n");
 	}
@@ -194,24 +197,27 @@ void* childthreadfunction(void* args){
 		printf("Time error!\n");
 	}
 
-	//Figure out linear equation
+	//Figure out linear equation	data = slope * time + intercept
+	//Solves for slope
 	tempi = newdata - olddata;
+	//uint64_t used to store value larger than 32 bits since Linux is a 32 bit operating system/long is 32 bits
 	new = ((uint64_t)newGPStime.tv_sec) * 1000000000 + (uint64_t)newGPStime.tv_nsec;
 	old = ((uint64_t)oldGPStime.tv_sec) * 1000000000 + (uint64_t)oldGPStime.tv_nsec;
-	
-
-
 	on = (long)(new - old);
 	slope = (double)tempi/(double)on;
 
+	//Solves for intercept
 	new = ((uint64_t)oldGPStime.tv_sec) * 1000000000 + (uint64_t)oldGPStime.tv_nsec;
 	intercept = (double)olddata - (double)(slope * (double)new);
-	new = ((uint64_t)buttontime.tv_sec) * 1000000000 + (uint64_t)buttontime.tv_nsec;
 
+	//Solves for interpolated data value
+	new = ((uint64_t)buttontime.tv_sec) * 1000000000 + (uint64_t)buttontime.tv_nsec;
 	interpolateddata = (double)(slope * (double)new) + intercept;
 
-	printf("Prev = %d, Next = %d, Data = %lf\n", olddata, newdata, interpolateddata);
+	//Output the data value
+	printf("Before data = %d, After data = %d, Interpolated Data = %lf\n", olddata, newdata, interpolateddata);
 
+	//Delete the thread
 	pthread_exit(0);
 }
 
