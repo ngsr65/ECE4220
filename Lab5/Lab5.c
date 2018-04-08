@@ -18,7 +18,7 @@ int main(int argc, char** argv){
 	int sock, i, votes[10] = {0}, mynum, boolv = 1, ismaster = 0, s, family, msgi, gotwhois = 0, invote = 0;
 	int isanother = 0, biggesti = 0, biggestn = 0;
 	char mmsg[40], msg[40], host[NI_MAXHOST], theirip[2], myip[2];
-	struct sockaddr_in mysock, *temp;	
+	struct sockaddr_in mysock, *temp, from;	
 	struct ifaddrs *ifaddr, *ifa;	
 
 	srand(time(0));
@@ -56,6 +56,8 @@ int main(int argc, char** argv){
 	mysock.sin_port = htons(atoi(*(argv + 1)));
 	//inet_aton(host, &mysock.sin_addr);  //My IP
 	inet_aton("128.206.19.255", &mysock.sin_addr); //Broadcast IP
+	
+	//Bind the socket?
 
 	//Let the socket broadcast
 	if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &boolv, sizeof(boolv)) < 0){
@@ -65,7 +67,7 @@ int main(int argc, char** argv){
 	
 	//Wait for WHOIS message
 	while (1){
-		msgi = read(sock, msg, 40);
+		msgi = recvfrom(sock, msg, 40, 0, &from, 40);
 		printf("Message received: %s\n", msg);
                 if (msgi < 0){
                         printf("Error reading from socket!\n");
@@ -73,7 +75,7 @@ int main(int argc, char** argv){
 
                 if (strcmp(msg, "WHOIS") == 0){
 			if (ismaster == 1){
-				msgi = write(sock, mmsg, 40);
+				msgi = sendto(sock, mmsg, 40, 0, &from, 40);
 			} else {
 				gotwhois = 1;
 			}	
