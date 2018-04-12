@@ -15,6 +15,7 @@
 
 
 int main(int argc, char** argv){
+	//Variables
 	int sock, i, votes[10] = {0}, mynum, boolv = 1, ismaster = 0, s, family, msgi, gotwhois = 0, invote = 0;
 	int isanother = 0, biggesti = 0, biggestn = 0;
 	char mmsg[40], msg[40], host[NI_MAXHOST], theirip[2], myip[2], theirhost[NI_MAXHOST];
@@ -22,16 +23,19 @@ int main(int argc, char** argv){
 	struct ifaddrs *ifaddr, *ifa;	
 	socklen_t fromlen;
 
+	//Seed random numbers
 	srand(time(0));
 
+	//Set default port if no port is specified
 	if (argc != 2){
-		printf("\nError! \"./a.out [port]\"\n");
-		return 1;
+		printf("\nUsing port 2000\n");
+		mysock.sin_port = htons(2000);
+	} else {
+		mysock.sin_port = htons(atoi(*(argv + 1)));
 	}
 
 
-
-	//Get my network information
+	//Get my IP address
 	getifaddrs(&ifaddr);
 	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next){
         	if (ifa->ifa_addr == NULL){
@@ -41,6 +45,7 @@ int main(int argc, char** argv){
     	}
 
 
+	//Notify user of IP and set master message
 	printf("My IP is %s\n", host);
 	sprintf(mmsg, "Nick@%s is the master", host);
 	myip[0] = host[11];
@@ -54,7 +59,6 @@ int main(int argc, char** argv){
 
 	//Set the socket parameters
 	mysock.sin_family = AF_INET;
-	mysock.sin_port = htons(atoi(*(argv + 1)));
 	inet_aton("128.206.19.255", &mysock.sin_addr); //Broadcast IP
 	
 	//Bind the socket
@@ -73,12 +77,14 @@ int main(int argc, char** argv){
 
 	//Wait for WHOIS message
 	while (1){
+		//Wait for a message and output
 		msgi = recvfrom(sock, msg, 40, 0, (struct sockaddr *)&from, &fromlen);
 		printf("Message received: %s\n", msg);
                 if (msgi < 0){
                         printf("Error reading from socket!\n");
                 }
 
+		//If message was WHOIS
                 if (strncmp(msg, "WHOIS", 5) == 0){
 			if (ismaster == 1){
 				inet_aton(inet_ntoa(from.sin_addr), &mysock.sin_addr);
@@ -87,6 +93,8 @@ int main(int argc, char** argv){
 			} else {
 				gotwhois = 1;
 			}	
+
+		//If message was VOTE, and only if a WHOIS was already sent
                 } else if ((strncmp(msg, "VOTE", 4) == 0) && (gotwhois == 1)){
 			mynum = rand()%10 + 1;
 			sprintf(msg, "# %s %d", host, mynum);
@@ -95,6 +103,8 @@ int main(int argc, char** argv){
 			printf("Just sent \"%s\"\n", msg);
 			gotwhois = 0;
 			invote = 1;
+
+		//If message was a vote
 		} else if ((msg[0] == '#') && (invote == 1)){
 			if ((msg[16] == '1') && (msg[17] == 0)){ 
 				votes[9]++;
@@ -115,10 +125,10 @@ int main(int argc, char** argv){
 				printf("%d - %d \t", i + 1, votes[i]);
 			}
 			printf("\n");
-		} else {
-			gotwhois = 0;
 		}
+		//Otherwise disregard
 
+		//Analyze new vote data and set status as master if vote is won
 		if (invote == 1){
 			biggestn = 0;
 			for (i = 0; i < 10; i++){
