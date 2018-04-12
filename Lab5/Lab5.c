@@ -96,22 +96,27 @@ int main(int argc, char** argv){
 
 		//If message was VOTE, and only if a WHOIS was already sent
                 } else if ((strncmp(msg, "VOTE", 4) == 0) && (gotwhois == 1)){
+			for (i = 0; i < 10; i++){
+				votes[i] = 0;
+			}
 			mynum = rand()%10 + 1;
 			sprintf(msg, "# %s %d", host, mynum);
 			inet_aton("128.206.19.255", &mysock.sin_addr);
 			msgi = sendto(sock, msg, 40, 0, &mysock, fromlen);
 			printf("Just sent \"%s\"\n", msg);
-			gotwhois = 0;
 			invote = 1;
 
 		//If message was a vote
 		} else if ((msg[0] == '#') && (invote == 1)){
-			if ((msg[16] == '1') && (msg[17] == 0)){ 
+			if ((msg[16] == '1') && (msg[17] == '0')){ 
 				votes[9]++;
 				if (mynum == 10){
 					isanother = 1;
 					theirip[0] = msg[13];
 					theirip[1] = msg[14];
+					if ((myip[0] == theirip[0]) && (myip[1] == theirip[1])){
+						isanother = 0;
+					}
 				}
 			} else {
 				votes[atoi(&msg[16]) - 1]++;	
@@ -119,6 +124,9 @@ int main(int argc, char** argv){
 					isanother = 1;
 					theirip[0] = msg[13];
                                         theirip[1] = msg[14];
+					if ((myip[0] == theirip[0]) && (myip[1] == theirip[1])){
+                                                isanother = 0;
+                                        }
 				}
 			}
 			for (i = 0; i < 10; i++){
@@ -132,8 +140,7 @@ int main(int argc, char** argv){
 		if (invote == 1){
 			biggestn = 0;
 			for (i = 0; i < 10; i++){
-				if (biggestn <= votes[i]){
-					biggestn = votes[i];
+				if (biggestn < votes[i]){
 					biggesti = i + 1;
 				}
 			}
