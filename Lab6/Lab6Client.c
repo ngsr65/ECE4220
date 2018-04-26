@@ -21,7 +21,7 @@
 int main(int argc, char** argv){
 	//Variables
 	int sock, i, votes[10] = {0}, mynum, boolv = 1, ismaster = 0, s, family, msgi, gotwhois = 0, invote = 0;
-	int isanother = 0, biggesti = 0, biggestn = 0, cdev_id, dummy;
+	int isanother = 0, biggesti = 0, biggestn = 0, cdev_id, dummy, justsent = 0;
 	char mmsg[40], msg[40], host[NI_MAXHOST], theirip[2], myip[2], theirhost[NI_MAXHOST];
 	struct sockaddr_in mysock, *temp, from;	
 	struct ifaddrs *ifaddr, *ifa;	
@@ -89,6 +89,10 @@ int main(int argc, char** argv){
 		//Wait for a message and output
 		msgi = recvfrom(sock, msg, 40, 0, (struct sockaddr *)&from, &fromlen);
 		printf("Message received: %s\n", msg);
+		if (justsent == 1){
+			msg[0] = '\0';
+			justsent = 0;
+		}
                 if (msgi < 0){
                         printf("Error reading from socket!\n");
                 }
@@ -100,6 +104,7 @@ int main(int argc, char** argv){
 				inet_aton("128.206.19.255", &mysock.sin_addr);
                         	msgi = sendto(sock, msg, 40, 0, &mysock, fromlen);
                         	printf("Just sent \"%s\"\n", msg);
+				justsent = 1;
 			}			
 		}
 
