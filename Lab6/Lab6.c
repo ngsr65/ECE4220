@@ -14,15 +14,93 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <asm/io.h>
+#include <asm/uaccess.h>
 #include <linux/types.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
+#include <linux/fs.h>
+
+#define MSG_SIZE 50
+#define CDEV_NAME "Lab6"
 
 MODULE_LICENSE("GPL");
 
 int mydev_id;
 int sounddelay = 200;
 unsigned long *ptr, data;
+static int major;
+static char msg[MSG_SIZE];
+
+
+static ssize_t device_read(struct file *filp, char __user *buffer, size_t length, loff_t *offset){
+	ssize_t dummy = copy_to_user(buffer, msg, length);
+
+	msg[0] = '@';
+
+	switch (sounddelay){
+		case 200:
+			msg[1] = 'A';
+		break;
+		case 300:
+                        msg[1] = 'B';
+                break; 
+		case 400:
+                        msg[1] = 'C';
+                break; 
+		case 500:
+                        msg[1] = 'D';
+                break; 
+		case 600:
+                        msg[1] = 'E';
+                break; 
+	}	
+	
+	msg[2] = '\0';
+
+	return length;
+}
+
+static ssize_t device_write(struct file *filep, const char __user *buff, size_t len, loff_t *off){
+	ssize_t dummy;
+
+	if (len > MSG_SIZE){
+		return -EINVAL;
+	}
+
+	dummy = copy_from_user(msg, buff, len);
+
+	if (len == MSG_SIZE){
+		msg[len - 1] = '\0';
+	} else {
+		msg[len] = '\0';
+	}
+
+	if (msg[0] == '@'){
+		switch (msg[1]){
+			case 'A':
+				sounddelay = 200;
+			break;
+			case 'B':
+                                sounddelay = 300;
+                        break;
+			case 'C':
+                                sounddelay = 400;
+                        break;
+			case 'D':
+                                sounddelay = 500;
+                        break;
+			case 'E':
+                                sounddelay = 600;
+                        break;
+		}
+	}
+	return len;
+}
+
+static struct file_operations fops = {
+	.read = device_read,
+	.write = device_write,
+};
 
 static irqreturn_t button_isr(int irq, void *dev_id){
 	disable_irq_nosync(79);
@@ -95,6 +173,10 @@ int thread_init(void){
 	char kthread_name[11] = "my_kthread";
 	int dummy = 0;		
 
+	//Register the character device
+	major = register_chrdev(0, CDEV_NAME, &fops);
+	printk("Major number is %d\n", major);
+
 	//Set the speaker as an output
 	ptr = (unsigned long *)ioremap(0x3F200000, 4096);
         *ptr = *ptr | 0x40000;
@@ -137,6 +219,7 @@ void thread_cleanup(void){
 	}
 	
 	free_irq(79, &mydev_id);
+	unregister_chrdev(major, CDEV_NAME);
 }
 
 module_init(thread_init);
