@@ -12,24 +12,35 @@
 #include <linux/time.h>
 #include <linux/timer.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
+#include <asm/io.h>
 
 MODULE_LICENSE("GPL");
 
 static struct task_struct *kthread1;
 
-int kthread_fn(void *ptr){
-	unsigned long j0, j1, *ptr;
-	int count = 0;
-	
-	j0 = jiffies;
-	j1 = j0 + 10*HZ;
+int kthread_fn(void *p){
+	unsigned long *ptr;
+		
 
-	ptr = (unsigned long *)ioremap(0x3F200004, 4096);
-	*ptr = *ptr | 0x40000;
-	
+	//Access correct memory location
+	ptr = (unsigned long *)ioremap(0x3F20001C, 4096);
 
 	while(1){
-		
+	
+		//Turn the speaker on
+		*ptr = *ptr | 0x20;
+
+		//Wait
+		udelay(200);
+
+		//Turn off the speaker
+		*(ptr + 3) = *(ptr + 3) | 0x20;
+
+		//Wait again
+		udelay(200);
+	
+		//Exit the kthread if it should
 		if (kthread_should_stop()){
 			do_exit(0);
 		}
@@ -42,9 +53,16 @@ int kthread_fn(void *ptr){
 
 int thread_init(void){
 	char kthread_name[11] = "my_kthread";
+	unsigned long *ptr;
+		
+	//Set the speaker as an output
+	ptr = (unsigned long *)ioremap(0x3F200000, 4096);
+        *ptr = *ptr | 0x40000;
 	
+	//Create a kthread
 	kthread1 = kthread_create(kthread_fn, NULL, kthread_name);
 	
+	//Start the kthread
 	if (kthread1){
 		wake_up_process(kthread1);
 	}

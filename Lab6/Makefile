@@ -1,5 +1,4 @@
 obj-m += 1a.o
-obj-m += 1b.o
 
 
 all:
